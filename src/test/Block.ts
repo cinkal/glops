@@ -20,20 +20,20 @@ module laya{
 			this._touchCallBack = null;
 		}
 
-		public static create(count:number, color:string, pos:number) : Block {
+		public static create(count:number, pos:number) : Block {
 			let ret = new Block();
-			if (ret && ret.init(count, color, pos))
+			if (ret && ret.init(count, pos))
 				return ret;
 			
 			ret = null;
 			return null;
 		}
 
-		private init(count:number, color:string, pos:number) : boolean {
+		private init(count:number, pos:number) : boolean {
 			let ret = false;
 			while (!ret) {
 				this._count = count;
-				this._color = color;
+				this._color = getColor(this._count);
 				this._pos = pos;
 
 				this._icon = new Laya.Sprite();
@@ -44,8 +44,9 @@ module laya{
 
 				this._label = new Laya.Label();
 				this._label.size(20, 20);
-				this._label.fontSize = 30;
-				this._label.pos(this._icon.width / 2 - 10, this._icon.height / 2 - 10);
+				this._label.fontSize = 50;
+				this._label.color = "#FFFFFF";
+				this._label.pos(this._icon.width / 2 - 15, this._icon.height / 2 - 25);
 				this._label.text = count.toString();
 				this._icon.addChild(this._label);
 
@@ -57,10 +58,10 @@ module laya{
 			return ret;
 		}
 
-		public reset(count:number, color:string, pos:number) : void {
+		public reset(count:number, pos:number) : void {
 			this._count = count;
 			this._pos = pos;
-			this._color = color;
+			this._color = getColor(this._count);
 			this.alpha = 1;
 			this.visible = true;
 			this.pos(-1000, -1000);
@@ -71,6 +72,7 @@ module laya{
 			let control = <BlockControl>(this.parent);
 			if (control) {
 				control._autoInit = false;
+				if (!control.useTime()) return;
 				this.addCount(1);
 				control.addCheck(this._pos);
 			}
@@ -92,30 +94,28 @@ module laya{
 		}
 
 		public doRemoveAction(callBack?:Handler) : void {
-			Laya.Tween.to(this, {alpha:0}, 500, null, callBack);
+			Laya.Tween.to(this, {alpha:0}, 200, null, callBack);
 		}
 
 		public doShowAction(callBack?:Handler) : void {
-			Laya.Tween.to(this, {alpha:1}, 500, null, callBack);
+			Laya.Tween.to(this, {alpha:1}, 200, null, callBack);
 		}
 
 		public addCount(count:number) : void {
 			this._count += count;
-			if (this._label) {
-				this._label.text = this._count.toString();
-			}
+			this._color = getColor(this._count);
+			this.updateView();
 		}
 
 		public moveDown(endPos:number, endPoint:Laya.Point, callBack?:Handler) : void {
 			this._pos = endPos;
-			Laya.Tween.to(this, {x:endPoint.x, y:endPoint.y}, 800, null, callBack);
+			Laya.Tween.to(this, {x:endPoint.x, y:endPoint.y}, 200, null, callBack);
 		}
 
 		public setCountLabel(count:number) : void {
 			this._count = count;
-			if (this._label) {
-				this._label.text = this._count.toString();
-			}
+			this._color = getColor(this._count);
+			this.updateView();
 		}
 	}
 }

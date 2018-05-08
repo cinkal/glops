@@ -17,11 +17,16 @@ module laya{
 		private _allCount:number;
 		private _allCountLabel:Laya.Label;
 		public _autoInit:boolean
+		public _useTime:number;
+		private _useBlock:Array<Laya.Sprite>;
+		private _lineSprite:Laya.Sprite;
+		private _overLabel:Laya.Label;
 
 		constructor(){
 			super();
 			this._removeList = new Array<Block>();
 			this._checkList = new Array<number>();
+			this._useBlock = new Array<Laya.Sprite>();
 			this._posMap = {};
 			this._blockMap = {};
 			this._pointMap = {};
@@ -32,6 +37,9 @@ module laya{
 			this._allCount = 0;
 			this._allCountLabel = null;
 			this._autoInit = true;
+			this._useTime = 5;
+			this._lineSprite = null;
+			this._overLabel = null;
 
 			Laya.timer.frameLoop(1, this, this.update);
 			this.initData();
@@ -40,7 +48,10 @@ module laya{
 		public initData() : void {
 			let oriPointX = 70;
 			let oriPointY = 550;
-			let array = [1, 2, 3];
+			let array = [];
+			for (var index = 1; index <= RANDOM_MAX; index++) {
+				array.push(index);
+			}
 			for (let rowIndex = 0; rowIndex < BLOCK_MAX_ROW; rowIndex++) {
 				let lastRowIndex = -1;
 				for (let colIndex = 0; colIndex < BLOCK_MAX_COL; colIndex++) {
@@ -66,7 +77,28 @@ module laya{
 					block.pos(pointX, pointY);
 					this.addChild(block);
 				}
+
+				//add use block sprite
+				let tempX = rowIndex * (BLOCK_WIDTH + BLOCK_COL_INTERVAL) + oriPointX;
+				let tempY = oriPointY - BLOCK_HEIGHT / 2 - 10;
+				let tempSprite = new Laya.Sprite();
+				tempSprite.size(BLOCK_WIDTH, BLOCK_HEIGHT / 3);
+				tempSprite.graphics.drawRect(0, 0, BLOCK_WIDTH, BLOCK_HEIGHT / 3, "#EA0000");
+				tempSprite.pos(tempX, tempY);
+				this.addChild(tempSprite);
+
+				this._useBlock.push(tempSprite);
 			}
+
+			this._lineSprite = new Laya.Sprite();
+			let tempX = this._useBlock[0].x;
+			let tempY = this._useBlock[0].y + this._useBlock[0].height + 10;
+			let width = (BLOCK_WIDTH + BLOCK_COL_INTERVAL) * BLOCK_MAX_COL - BLOCK_COL_INTERVAL;
+
+			this._lineSprite.size(width, 5);
+			this._lineSprite.graphics.drawLine(tempX, tempY, tempX + width, tempY, "#FFFF37", 2);
+			// this._lineSprite.pos(tempX, tempY);
+			this.addChild(this._lineSprite);
 
 			this.addActivityCount(0);
 			// this.initNewData();
@@ -172,7 +204,10 @@ module laya{
 				}, [block, (index == remainIndex) , (index == findList.length - 1) ]));
 			}
 
-			if (isAdd) this.addActivityCount(addCount);
+			if (isAdd) {
+				this.addActivityCount(addCount);
+				this.addTime();
+			}
 
 			if (moveDownList.length <= 0) return true;
 			
@@ -341,13 +376,17 @@ module laya{
 					if (!point) continue;
 
 					block = this.addBolck(pos);
-					block.pos(point.x, -300);//start point y will be a final number
+					block.pos(point.x, point.y);//start point y will be a final number
+					block.alpha = 0;
 					this.addCheck(pos); //new pos must check
 
 					this._filling ++;
-					block.moveDown(pos, point, Laya.Handler.create(this, function fillCallBack() : void {
+					block.doShowAction(Laya.Handler.create(this, function fillCallBack() : void {
 						this._filling --;
 					}));
+					// block.moveDown(pos, point, Laya.Handler.create(this, function fillCallBack() : void {
+					// 	this._filling --;
+					// }));
 				}
 			}
 
@@ -358,9 +397,9 @@ module laya{
 			let ret:Block = null;
 			if (this._removeList && this._removeList.length > 0) {
 				ret = <Block>this._removeList.shift();
-				ret.reset(random(1, 3), "#ffffff", pos);
+				ret.reset(random(1, RANDOM_MAX), pos);
 			}else {
-				ret = Block.create(random(1, 3), "#ffffff", pos);
+				ret = Block.create(random(1, RANDOM_MAX), pos);
 			}
 			this._blockMap[pos.toString()] = ret;
 			return ret;
@@ -412,13 +451,46 @@ module laya{
 
 		private getRandomIndex(lastRowIndex:number, lastColIndex:number) : number {
 			let array = new Array<number>();
-			for (let index = 0; index < 3; index++) {
+			for (let index = 0; index < RANDOM_MAX; index++) {
 				if (index == lastRowIndex || index == lastColIndex) continue;
 				array.push(index);
 			}
 			return array[random(0, array.length - 1)];
 		}
 
+		public useTime() : boolean {
+			if (this._useTime > 0) {
+				this._useTime --;
+				this._useBlock[this._useTime].visible = false;
+				return true;
+			}else {
+				this.setGameOver();
+				this.timer.clearAll(this);
+				
+				return false;
+			}
+		}
+
+		public addTime() : boolean {
+			if (this._useTime < BLOCK_MAX_ROW) {
+				this._useBlock[this._useTime].visible = true;
+				this._useTime ++;
+			}
+			return true;
+		}
+
+		private setGameOver() : void {
+			if (!this._overLabel) {
+				this._overLabel = new Laya.Label();
+				this._overLabel.size(300, 300);
+				this._overLabel.fontSize = 100;
+				this._overLabel.color = "#FFFFFF";
+				this._overLabel.pos(100, 150);
+				this._overLabel.text = "Game Over!";
+				this._overLabel.zOrder = 10;
+				this.addChild(this._overLabel);
+			}
+		}
 	}
 }
 
@@ -438,6 +510,40 @@ function random(min:number, max:number) : number {
 	return Math.round(Math.random() * 100) % (max - min + 1) + min;
 }
 
+function getColor(count:number)  : string {
+	let ret = "";
+	switch (count) {
+		case 1:
+			ret = "#C4C400";
+			break;
+		case 2:
+			ret = "#73BF00";
+			break;
+		case 3:
+			ret = "#00CACA";
+			break;
+		case 4:
+			ret = "#0080FF";
+			break;
+		case 5:
+			ret = "#921AFF";
+			break;
+		case 6:
+			ret = "#FF00FF";
+			break;
+		case 7:
+			ret = "#D200D2";
+			break;
+		case 8:
+			ret = "#D26900";
+			break;
+		default:
+			ret = "#8E8E8E";
+			break;
+	}
+	return ret;
+}
+
 
 var BLOCK_WIDTH = 100;
 var BLOCK_HEIGHT = 100;
@@ -446,3 +552,4 @@ var BLOCK_COL_INTERVAL = 20;
 var BLOCK_MAX_ROW = 5;
 var BLOCK_MAX_COL = 5;
 var GLOPS_STEP = 3;
+var RANDOM_MAX = 5;
