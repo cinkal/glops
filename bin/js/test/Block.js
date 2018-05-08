@@ -25,18 +25,18 @@ var laya;
             _this._touchCallBack = null;
             return _this;
         }
-        Block.create = function (count, color, pos) {
+        Block.create = function (count, pos) {
             var ret = new Block();
-            if (ret && ret.init(count, color, pos))
+            if (ret && ret.init(count, pos))
                 return ret;
             ret = null;
             return null;
         };
-        Block.prototype.init = function (count, color, pos) {
+        Block.prototype.init = function (count, pos) {
             var ret = false;
             while (!ret) {
                 this._count = count;
-                this._color = color;
+                this._color = getColor(this._count);
                 this._pos = pos;
                 this._icon = new Laya.Sprite();
                 this._icon.size(BLOCK_WIDTH, BLOCK_HEIGHT);
@@ -45,8 +45,9 @@ var laya;
                 this.addChild(this._icon);
                 this._label = new Laya.Label();
                 this._label.size(20, 20);
-                this._label.fontSize = 30;
-                this._label.pos(this._icon.width / 2 - 10, this._icon.height / 2 - 10);
+                this._label.fontSize = 50;
+                this._label.color = "#FFFFFF";
+                this._label.pos(this._icon.width / 2 - 15, this._icon.height / 2 - 25);
                 this._label.text = count.toString();
                 this._icon.addChild(this._label);
                 this.size(BLOCK_WIDTH, BLOCK_HEIGHT);
@@ -54,10 +55,10 @@ var laya;
             }
             return ret;
         };
-        Block.prototype.reset = function (count, color, pos) {
+        Block.prototype.reset = function (count, pos) {
             this._count = count;
             this._pos = pos;
-            this._color = color;
+            this._color = getColor(this._count);
             this.alpha = 1;
             this.visible = true;
             this.pos(-1000, -1000);
@@ -67,6 +68,8 @@ var laya;
             var control = (this.parent);
             if (control) {
                 control._autoInit = false;
+                if (!control.useTime())
+                    return;
                 this.addCount(1);
                 control.addCheck(this._pos);
             }
@@ -87,26 +90,24 @@ var laya;
             }
         };
         Block.prototype.doRemoveAction = function (callBack) {
-            Laya.Tween.to(this, { alpha: 0 }, 500, null, callBack);
+            Laya.Tween.to(this, { alpha: 0 }, 200, null, callBack);
         };
         Block.prototype.doShowAction = function (callBack) {
-            Laya.Tween.to(this, { alpha: 1 }, 500, null, callBack);
+            Laya.Tween.to(this, { alpha: 1 }, 200, null, callBack);
         };
         Block.prototype.addCount = function (count) {
             this._count += count;
-            if (this._label) {
-                this._label.text = this._count.toString();
-            }
+            this._color = getColor(this._count);
+            this.updateView();
         };
         Block.prototype.moveDown = function (endPos, endPoint, callBack) {
             this._pos = endPos;
-            Laya.Tween.to(this, { x: endPoint.x, y: endPoint.y }, 800, null, callBack);
+            Laya.Tween.to(this, { x: endPoint.x, y: endPoint.y }, 200, null, callBack);
         };
         Block.prototype.setCountLabel = function (count) {
             this._count = count;
-            if (this._label) {
-                this._label.text = this._count.toString();
-            }
+            this._color = getColor(this._count);
+            this.updateView();
         };
         return Block;
     }(Laya.View));
